@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Opening Transit Announcer</title>
+  <script>
+    var base = '/transit-announcer/';
+    var route = location.pathname.slice(base.length);
+    location.replace(base + (route ? '#/' + route : '') + location.search);
+  </script>
+</head>
+<body>
+  <p>Opening Transit Announcer…</p>
+</body>
+</html>
