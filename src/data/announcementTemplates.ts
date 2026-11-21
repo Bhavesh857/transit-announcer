@@ -24,7 +24,11 @@ export function dedupe(values: string[]): string[] {
 export function formatTime(time: string): string { return normalizeValue(time); }
 export function formatHindiTime(time: string): string {
   const match = /^(\d{2}):(\d{2})$/.exec(normalizeValue(time));
-  return match ? `${Number(match[1])} बजकर ${Number(match[2])} मिनट` : normalizeValue(time);
+  if(!match) return normalizeValue(time);
+  const hours=Number(match[1]);
+  const minutes=Number(match[2]);
+  const period=hours<4?'रात':hours<12?'सुबह':hours<16?'दोपहर':hours<20?'शाम':'रात';
+  return `${period} ${hours%12||12} बजकर ${minutes} मिनट`;
 }
 export function buildAnnouncement(bus:string,from:string,to:string,via:string,platform:string,time:string,note:string):string {
   const fields = [
@@ -37,11 +41,17 @@ export function buildSpokenDetails(bus:string,from:string,to:string,via:string,p
   return buildAnnouncement(bus,from,to,via,platform,time,note);
 }
 export function buildHindiSpokenDetails(bus:string,from:string,to:string,via:string,platform:string,time:string,note:string):string {
-  const fields = [
-    ['बस नंबर',normalizeValue(bus)], ['कहाँ से',normalizeValue(from)], ['कहाँ तक',normalizeValue(to)],
-    ['वाया',normalizeValue(via)], ['प्लेटफॉर्म',normalizeValue(platform)], ['समय',formatHindiTime(time)], ['सूचना',stripEndingPunctuation(normalizeValue(note))],
-  ] as const;
-  return fields.filter(([,value])=>value).map(([label,value])=>`${label}: ${value}।`).join(' ');
+  const b=normalizeValue(bus), f=normalizeValue(from), t=normalizeValue(to), v=normalizeValue(via), p=normalizeValue(platform), tm=formatHindiTime(time), n=stripEndingPunctuation(normalizeValue(note));
+  if(![b,f,t,v,p,tm,n].some(Boolean)) return '';
+  const parts=['यात्रीगण कृपया ध्यान दें।'];
+  if(b) parts.push(`बस नंबर ${b}`);
+  if(f) parts.push(`${f} से`);
+  if(t) parts.push(`${t} जाने वाली`);
+  if(v) parts.push(`वाया ${v}`);
+  const departure=[tm?`${tm} पर`:'',p?`प्लेटफॉर्म ${p} से`:'','रवाना होगी।'].filter(Boolean).join(' ');
+  parts.push(departure);
+  if(n) parts.push(`कृपया ध्यान दें, ${n}।`);
+  return parts.join(' ');
 }
 export function migrateLegacyValues(input:unknown):SavedValues|null {
   if(!input || typeof input!=='object' || Array.isArray(input)) return null;

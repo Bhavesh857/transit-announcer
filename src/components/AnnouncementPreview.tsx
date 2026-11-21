@@ -13,9 +13,12 @@ export function AnnouncementPreview({text,spokenText,hindiSpokenText,bus,route,c
   window.speechSynthesis.cancel();
   const utterance=new SpeechSynthesisUtterance(speechText);
   utterance.lang=language;
-  utterance.rate=0.9;
-  const matchingVoice=window.speechSynthesis.getVoices().find(voice=>voice.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
-  if(matchingVoice) utterance.voice=matchingVoice;
+  utterance.rate=language==='hi-IN'?0.82:0.9;
+  utterance.pitch=language==='hi-IN'?1.03:1;
+  const voices=window.speechSynthesis.getVoices();
+  const languageVoices=voices.filter(voice=>voice.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
+  const preferredVoice=languageVoices.find(voice=>/natural|neural|online|google|microsoft|swara|madhur/i.test(voice.name))||languageVoices.find(voice=>!voice.localService)||languageVoices[0];
+  if(preferredVoice) utterance.voice=preferredVoice;
   utterance.onstart=()=>setSpeaking(language);
   utterance.onend=()=>setSpeaking(null);
   utterance.onerror=()=>setSpeaking(null);

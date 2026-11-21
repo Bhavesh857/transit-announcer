@@ -5,7 +5,7 @@ describe('announcement logic',()=>{
  it('handles partial and empty details',()=>{expect(buildAnnouncement('','','','','','','')).toBe('');expect(buildAnnouncement('42','','','','','','')).toBe('Bus number: 42.')});
  it('keeps selected time in 24-hour hours-and-minutes format',()=>{expect(formatTime('15:40')).toBe('15:40');expect(buildAnnouncement('42','','','','','15:40','')).toContain('Time: 15:40.')});
  it('builds English speech with all field names',()=>expect(buildSpokenDetails('42','Central Station','Airport','City Hall','3','15:40','Stand clear')).toBe('Bus number: 42. From: Central Station. To: Airport. Via: City Hall. Platform: 3. Time: 15:40. Note: Stand clear.'));
- it('builds Hindi speech with translated field names and time',()=>expect(buildHindiSpokenDetails('42','Central Station','Airport','City Hall','3','15:40','Stand clear')).toBe('बस नंबर: 42। कहाँ से: Central Station। कहाँ तक: Airport। वाया: City Hall। प्लेटफॉर्म: 3। समय: 15 बजकर 40 मिनट। सूचना: Stand clear।'));
+ it('builds a natural Hindi passenger announcement',()=>expect(buildHindiSpokenDetails('1120','ब्यावर','अजमेर','मांगलियावास','2','12:20','')).toBe('यात्रीगण कृपया ध्यान दें। बस नंबर 1120 ब्यावर से अजमेर जाने वाली वाया मांगलियावास दोपहर 12 बजकर 20 मिनट पर प्लेटफॉर्म 2 से रवाना होगी।'));
  it('omits empty fields from speech',()=>expect(buildSpokenDetails('42','','','','','','')).toBe('Bus number: 42.'));
  it('normalizes whitespace',()=>expect(normalizeValue('  Central\n Station  ')).toBe('Central Station'));
 });
