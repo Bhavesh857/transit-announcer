@@ -1,6 +1,6 @@
 ﻿# Transit Announcer
 
-A private, frontend-only React app for composing transit announcements, speaking populated field names and values aloud, and managing reusable values. Data and theme preferences remain in browser local storage.
+A private, frontend-only React app for composing transit announcements, speaking populated field names and values aloud in English or Hindi, and managing reusable values. Data and theme preferences remain in browser local storage.
 
 ## GitHub Pages
 

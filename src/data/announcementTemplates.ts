@@ -17,8 +17,25 @@ export function dedupe(values: string[]): string[] {
   const seen = new Set<string>();
   return values.filter(value => { const key=value.toLocaleLowerCase(); if(seen.has(key)) return false; seen.add(key); return true; });
 }
+export function formatTime(time: string): string {
+  const match = /^(\d{2}):(\d{2})$/.exec(normalizeValue(time));
+  if (!match) return normalizeValue(time);
+  const hours = Number(match[1]);
+  const minutes = match[2];
+  const period = hours >= 12 ? 'PM' : 'AM';
+  return `${hours % 12 || 12}:${minutes} ${period}`;
+}
+export function formatHindiTime(time: string): string {
+  const match = /^(\d{2}):(\d{2})$/.exec(normalizeValue(time));
+  if (!match) return normalizeValue(time);
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const period = hours < 4 ? 'रात' : hours < 12 ? 'सुबह' : hours < 16 ? 'दोपहर' : hours < 20 ? 'शाम' : 'रात';
+  const minutePart = minutes ? ` बजकर ${minutes} मिनट` : ' बजे';
+  return `${period} ${hours % 12 || 12}${minutePart}`;
+}
 export function buildAnnouncement(bus: string, route: string, time: string, destination: string, note: string): string {
-  const b=normalizeValue(bus), r=normalizeValue(route), t=normalizeValue(time), d=normalizeValue(destination), n=normalizeValue(note);
+  const b=normalizeValue(bus), r=normalizeValue(route), t=formatTime(time), d=normalizeValue(destination), n=normalizeValue(note);
   if (![b,r,t,d].some(Boolean) && !n) return '';
   const subject = b ? `This is bus ${b}` : 'This bus';
   const routePart = r ? ` on the ${r}` : '';
@@ -29,17 +46,23 @@ export function buildAnnouncement(bus: string, route: string, time: string, dest
 }
 export function buildSpokenDetails(bus: string, route: string, time: string, destination: string, note: string): string {
   const fields = [
-    ['Bus number', bus],
-    ['Route', route],
-    ['Time', time],
-    ['Destination', destination],
-    ['Note', note],
+    ['Bus number', normalizeValue(bus)],
+    ['Route', normalizeValue(route)],
+    ['Time', formatTime(time)],
+    ['Destination', normalizeValue(destination)],
+    ['Note', normalizeValue(note)],
   ] as const;
-  return fields
-    .map(([label, value]) => [label, normalizeValue(value)] as const)
-    .filter(([, value]) => value)
-    .map(([label, value]) => `${label}: ${value}.`)
-    .join(' ');
+  return fields.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}.`).join(' ');
+}
+export function buildHindiSpokenDetails(bus: string, route: string, time: string, destination: string, note: string): string {
+  const fields = [
+    ['बस नंबर', normalizeValue(bus)],
+    ['मार्ग', normalizeValue(route)],
+    ['समय', formatHindiTime(time)],
+    ['गंतव्य', normalizeValue(destination)],
+    ['सूचना', normalizeValue(note)],
+  ] as const;
+  return fields.filter(([, value]) => value).map(([label, value]) => `${label}: ${value}।`).join(' ');
 }
 export function createBackup(values: SavedValues): Backup { return {schemaVersion:1,exportedAt:new Date().toISOString(),...values}; }
 export function validateBackup(input: unknown): {ok:true; data:Backup}|{ok:false; error:string} {

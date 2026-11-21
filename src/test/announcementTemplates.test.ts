@@ -1,9 +1,11 @@
 ﻿import { describe, expect, it } from 'vitest';
-import { DEFAULT_VALUES, buildAnnouncement, buildSpokenDetails, mergeValues, normalizeValue, validateBackup } from '../data/announcementTemplates';
+import { DEFAULT_VALUES, buildAnnouncement, buildHindiSpokenDetails, buildSpokenDetails, formatTime, mergeValues, normalizeValue, validateBackup } from '../data/announcementTemplates';
 describe('announcement logic',()=>{
- it('builds and normalizes a complete announcement',()=>expect(buildAnnouncement(' 42 ','Airport   Express','14:15',' Terminal 1 ','Platform change.')).toBe('This is bus 42 on the Airport Express to Terminal 1, departing at 14:15. Please note: Platform change.'));
+ it('builds and normalizes a complete announcement',()=>expect(buildAnnouncement(' 42 ','Airport   Express','14:15',' Terminal 1 ','Platform change.')).toBe('This is bus 42 on the Airport Express to Terminal 1, departing at 2:15 PM. Please note: Platform change.'));
  it('handles partial and empty details',()=>{expect(buildAnnouncement('','','','','')).toBe('');expect(buildAnnouncement('42','','','','')).toBe('This is bus 42.')});
- it('builds speech with each populated field name and value',()=>expect(buildSpokenDetails('42','Airport Express','14:15','Terminal 1','Platform change')).toBe('Bus number: 42. Route: Airport Express. Time: 14:15. Destination: Terminal 1. Note: Platform change.'));
+ it('formats selected time for the visible announcement',()=>{expect(formatTime('14:15')).toBe('2:15 PM');expect(buildAnnouncement('42','Airport Express','14:15','Terminal 1','')).toContain('departing at 2:15 PM')});
+ it('builds English speech with each populated field name and value',()=>expect(buildSpokenDetails('42','Airport Express','14:15','Terminal 1','Platform change')).toBe('Bus number: 42. Route: Airport Express. Time: 2:15 PM. Destination: Terminal 1. Note: Platform change.'));
+ it('builds Hindi speech with translated field names and time',()=>expect(buildHindiSpokenDetails('42','Airport Express','14:15','Terminal 1','Platform change')).toBe('बस नंबर: 42। मार्ग: Airport Express। समय: दोपहर 2 बजकर 15 मिनट। गंतव्य: Terminal 1। सूचना: Platform change।'));
  it('omits empty fields from speech',()=>expect(buildSpokenDetails('42','','','','')).toBe('Bus number: 42.'));
  it('normalizes whitespace',()=>expect(normalizeValue('  Central\n Harbor  ')).toBe('Central Harbor'));
 });
