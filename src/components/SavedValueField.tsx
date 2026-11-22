@@ -1,7 +1,6 @@
-﻿import { Combobox, Field, Input, Option } from '@fluentui/react-components';
-interface Props {label:string; value:string; options:string[]; onChange:(value:string)=>void; required?:boolean; type?:'text'|'time'; maxLength?:number}
-export function SavedValueField({label,value,options,onChange,required,type='text',maxLength}:Props){
- const id=`value-${label.toLowerCase().replace(/\W/g,'-')}`;
- if(type==='time') return <Field label={label} required={required}><Input id={id} value={value} type="time" onChange={(_,d)=>onChange(d.value)} size="large"/></Field>;
- return <Field label={label} required={required}><Combobox id={id} value={value} freeform size="large" onInput={event=>onChange((event.target as HTMLInputElement).value)} onOptionSelect={(_,data)=>onChange(data.optionText||'')} placeholder={options.length?'Type or choose a saved value':'Type a value'}>{options.map(option=><Option key={option} text={option}>{option}</Option>)}</Combobox></Field>;
+﻿import { Field, Input } from '@fluentui/react-components';
+interface Props {label:string; value:string; options:string[]; onChange:(value:string)=>void}
+export function SavedValueField({label,value,options,onChange}:Props){
+ const id=`value-section-${label}`;
+ return <Field label={label}><Input id={id} value={value} onChange={(_,data)=>onChange(data.value)} size="large" placeholder="Type a value"/><select className="saved-value-select" value="" onChange={event=>{if(event.target.value)onChange(event.target.value)}} aria-label={`Choose saved value for section ${label}`}><option value="">{options.length?'Choose saved value…':'No saved values yet'}</option>{options.map(option=><option key={option} value={option}>{option}</option>)}</select></Field>;
 }
