@@ -1,13 +1,14 @@
 ﻿import { useCallback, useEffect, useState } from 'react';
-import { DEFAULT_VALUES, LEGACY_STORAGE_KEY, SavedValues, STORAGE_KEY, ValueKind, dedupe, migrateLegacyValues, normalizeValue } from '../data/announcementTemplates';
+import { DEFAULT_VALUES, LEGACY_STORAGE_KEYS, SavedValues, STORAGE_KEY, ValueKind, dedupe, migrateLegacyValues, normalizeValue } from '../data/announcementTemplates';
 
 function readValues(): SavedValues {
   try {
     const parsed=JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if(parsed && Object.keys(DEFAULT_VALUES).every(k=>Array.isArray(parsed[k]) && parsed[k].every((v:unknown)=>typeof v==='string'))) return parsed;
-    const legacy=JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || 'null');
-    const migrated=migrateLegacyValues(legacy);
-    if(migrated) return mergeWithDefaults(migrated);
+    for(const key of LEGACY_STORAGE_KEYS){
+      const migrated=migrateLegacyValues(JSON.parse(localStorage.getItem(key) || 'null'));
+      if(migrated) return mergeWithDefaults(migrated);
+    }
   } catch { /* recover using defaults */ }
   return structuredClone(DEFAULT_VALUES);
 }

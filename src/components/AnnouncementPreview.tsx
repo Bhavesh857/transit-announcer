@@ -1,29 +1,16 @@
-﻿import { useEffect, useState } from 'react';
-import { Button, Card, CardHeader, Text, Title3 } from '@fluentui/react-components';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, CardHeader, Field, Radio, RadioGroup, Slider, Text, Title3 } from '@fluentui/react-components';
 import { CopyRegular, CheckmarkCircleRegular, Speaker2Regular, StopRegular } from '@fluentui/react-icons';
-interface Props {text:string; spokenText:string; hindiSpokenText:string; bus:string; route:string; copied:boolean; onCopy:()=>void}
-type SpeechLanguage='en-US'|'hi-IN';
-export function AnnouncementPreview({text,spokenText,hindiSpokenText,bus,route,copied,onCopy}:Props){
- const [speaking,setSpeaking]=useState<SpeechLanguage|null>(null);
- const speechSupported=typeof window!=='undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
- const words=text ? text.split(/\s+/).length : 0;
- useEffect(()=>()=>{if(speechSupported) window.speechSynthesis.cancel()},[speechSupported]);
- const speak=(speechText:string,language:SpeechLanguage)=>{
-  if(!speechSupported || !speechText) return;
-  window.speechSynthesis.cancel();
-  const utterance=new SpeechSynthesisUtterance(speechText);
-  utterance.lang=language;
-  utterance.rate=language==='hi-IN'?0.82:0.9;
-  utterance.pitch=language==='hi-IN'?1.03:1;
-  const voices=window.speechSynthesis.getVoices();
-  const languageVoices=voices.filter(voice=>voice.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
-  const preferredVoice=languageVoices.find(voice=>/natural|neural|online|google|microsoft|swara|madhur/i.test(voice.name))||languageVoices.find(voice=>!voice.localService)||languageVoices[0];
-  if(preferredVoice) utterance.voice=preferredVoice;
-  utterance.onstart=()=>setSpeaking(language);
-  utterance.onend=()=>setSpeaking(null);
-  utterance.onerror=()=>setSpeaking(null);
-  window.speechSynthesis.speak(utterance);
- };
- const stop=()=>{window.speechSynthesis.cancel();setSpeaking(null)};
- return <Card className="panel preview-panel"><CardHeader header={<Title3>Passenger preview</Title3>} description={<Text>{text?'Ready to announce':'Enter trip details'}</Text>}/><div className="announcement" aria-live="polite" aria-atomic="true"><div><div className="eyebrow">{[route,bus&&`Bus ${bus}`].filter(Boolean).join(' · ')||'Your announcement'}</div><p>{text||'Your announcement will appear here as you type.'}</p></div><Text className="muted">{text?`${words} words · Clear`:'Live preview'}</Text></div><div className="actions"><Button appearance="primary" size="large" icon={copied?<CheckmarkCircleRegular/>:<CopyRegular/>} disabled={!text} onClick={onCopy}>{copied?'Copied':'Copy announcement'}</Button>{speechSupported?<>{speaking?<Button size="large" icon={<StopRegular/>} onClick={stop}>Stop speaking</Button>:<><Button size="large" icon={<Speaker2Regular/>} disabled={!spokenText} onClick={()=>speak(spokenText,'en-US')}>Speak English</Button><Button size="large" icon={<Speaker2Regular/>} disabled={!hindiSpokenText} onClick={()=>speak(hindiSpokenText,'hi-IN')}>हिंदी में सुनें</Button></>}</>:<Text role="status" className="muted">Speech is not supported by this browser.</Text>}</div></Card>;
+interface Props {text:string; hindiSpokenText:string; bus:string; route:string; copied:boolean; onCopy:()=>void}
+type VoiceGender='female'|'male';
+export function AnnouncementPreview({text,hindiSpokenText,bus,route,copied,onCopy}:Props){
+ const [speaking,setSpeaking]=useState(false); const [gender,setGender]=useState<VoiceGender>('female'); const [speed,setSpeed]=useState(1); const [voices,setVoices]=useState<SpeechSynthesisVoice[]>([]);
+ const speechSupported=typeof window!=='undefined'&&'speechSynthesis'in window&&'SpeechSynthesisUtterance'in window;
+ const words=text?text.split(/\s+/).length:0;
+ useEffect(()=>{if(!speechSupported)return;const load=()=>setVoices(window.speechSynthesis.getVoices());load();window.speechSynthesis.addEventListener('voiceschanged',load);return()=>{window.speechSynthesis.cancel();window.speechSynthesis.removeEventListener('voiceschanged',load)}},[speechSupported]);
+ const hindiVoices=useMemo(()=>voices.filter(voice=>voice.lang.toLowerCase().startsWith('hi')),[voices]);
+ const selectVoice=()=>{const hints=gender==='female'?/female|swara|kalpana|heera|veena/i:/male|madhur|hemant|ravi/i;return hindiVoices.find(voice=>hints.test(voice.name))||hindiVoices.find(voice=>/natural|neural|online|google|microsoft/i.test(voice.name))||hindiVoices[0]};
+ const speak=()=>{if(!speechSupported||!hindiSpokenText)return;window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(hindiSpokenText);utterance.lang='hi-IN';utterance.rate=speed;utterance.pitch=gender==='female'?1.08:0.88;const voice=selectVoice();if(voice)utterance.voice=voice;utterance.onstart=()=>setSpeaking(true);utterance.onend=()=>setSpeaking(false);utterance.onerror=()=>setSpeaking(false);window.speechSynthesis.speak(utterance)};
+ const stop=()=>{window.speechSynthesis.cancel();setSpeaking(false)};
+ return <Card className="panel preview-panel"><CardHeader header={<Title3>Passenger preview</Title3>} description={<Text>{text?'Ready to announce':'Enter trip details'}</Text>}/><div className="announcement" aria-live="polite" aria-atomic="true"><div><div className="eyebrow">{[route,bus&&`Bus ${bus}`].filter(Boolean).join(' · ')||'Your announcement'}</div><p>{text||'Your announcement will appear here as you type.'}</p></div><Text className="muted">{text?`${words} words · Clear`:'Live preview'}</Text></div><div className="speech-settings"><Field label="Hindi voice"><RadioGroup layout="horizontal" value={gender} onChange={(_,data)=>setGender(data.value as VoiceGender)}><Radio value="female" label="Female"/><Radio value="male" label="Male"/></RadioGroup></Field><Field label={`Speed: ${speed.toFixed(1)}×`}><Slider min={1} max={2} step={0.1} value={speed} onChange={(_,data)=>setSpeed(data.value)} aria-label="Announcement speed"/></Field>{speechSupported&&!hindiVoices.length&&<Text className="muted">Install a Hindi voice on this phone for male/female voice selection.</Text>}</div><div className="actions"><Button appearance="primary" size="large" icon={copied?<CheckmarkCircleRegular/>:<CopyRegular/>} disabled={!text} onClick={onCopy}>{copied?'Copied':'Copy announcement'}</Button>{speechSupported?(speaking?<Button size="large" icon={<StopRegular/>} onClick={stop}>Stop speaking</Button>:<Button size="large" icon={<Speaker2Regular/>} disabled={!hindiSpokenText} onClick={speak}>हिंदी में सुनें</Button>):<Text role="status" className="muted">Speech is not supported by this browser.</Text>}</div></Card>;
 }
