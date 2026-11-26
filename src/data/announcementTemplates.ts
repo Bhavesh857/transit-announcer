@@ -1,13 +1,15 @@
-﻿export type ValueKind = 'section1' | 'section2' | 'section3' | 'section4' | 'section5' | 'section6' | 'section7' | 'section8' | 'section9' | 'section10';
-export type SavedValues = Record<ValueKind, string[]>;
-export interface Backup extends SavedValues { schemaVersion: 4; exportedAt: string }
+﻿export type ValueKind = `section${number}`;
+export type SavedValues = Partial<Record<ValueKind, string[]>>;
+export interface Backup { schemaVersion: 5; exportedAt: string; sections: SavedValues }
 
-export const SECTION_KINDS: ValueKind[] = Array.from({length:10},(_,index)=>`section${index+1}` as ValueKind);
-export const DEFAULT_VALUES: SavedValues = Object.fromEntries(SECTION_KINDS.map(kind=>[kind,[] as string[]])) as unknown as SavedValues;
-export const LABELS: Record<ValueKind,string> = Object.fromEntries(SECTION_KINDS.map((kind,index)=>[kind,String(index+1)])) as Record<ValueKind,string>;
-const LIMITS: Record<ValueKind,number> = Object.fromEntries(SECTION_KINDS.map(kind=>[kind,200])) as Record<ValueKind,number>;
-export const STORAGE_KEY = 'transit-announcer.values.v4';
-export const LEGACY_STORAGE_KEYS = ['transit-announcer.values.v3','transit-announcer.values.v2','transit-announcer.values.v1'];
+export const INITIAL_SECTION_COUNT = 10;
+export const sectionKind = (index:number):ValueKind => `section${index+1}`;
+export const SECTION_KINDS: ValueKind[] = Array.from({length:INITIAL_SECTION_COUNT},(_,index)=>sectionKind(index));
+export const DEFAULT_VALUES: SavedValues = Object.fromEntries(SECTION_KINDS.map(kind=>[kind,[] as string[]]));
+export const sectionLabel = (kind:string):string => kind.replace(/^section/,'');
+const isSectionKind = (kind:string):kind is ValueKind => /^section[1-9]\d*$/.test(kind);
+export const STORAGE_KEY = 'transit-announcer.values.v5';
+export const LEGACY_STORAGE_KEYS = ['transit-announcer.values.v4','transit-announcer.values.v3','transit-announcer.values.v2','transit-announcer.values.v1'];
 
 export function normalizeValue(value: string): string { return value.trim().replace(/\s+/g, ' '); }
 function stripEndingPunctuation(value:string):string { return value.replace(/[.!?।]+$/, ''); }
@@ -26,31 +28,37 @@ export function migrateLegacyValues(input:unknown):SavedValues|null {
   if(!input || typeof input!=='object' || Array.isArray(input)) return null;
   const raw=input as Record<string,unknown>;
   const strings=(key:string)=>Array.isArray(raw[key]) ? raw[key].filter((value):value is string=>typeof value==='string').map(normalizeValue).filter(Boolean) : [];
-  if(!SECTION_KINDS.some(key=>Array.isArray(raw[key]))) return null;
-  return Object.fromEntries(SECTION_KINDS.map(kind=>[kind,dedupe(strings(kind))])) as SavedValues;
+  const kinds=Object.keys(raw).filter(isSectionKind).sort((a,b)=>Number(sectionLabel(a))-Number(sectionLabel(b)));
+  if(!kinds.length) return null;
+  return Object.fromEntries(kinds.map(kind=>[kind,dedupe(strings(kind))]));
 }
-export function createBackup(values:SavedValues):Backup { return {schemaVersion:4,exportedAt:new Date().toISOString(),...values}; }
+export function createBackup(values:SavedValues):Backup { return {schemaVersion:5,exportedAt:new Date().toISOString(),sections:values}; }
 export function validateBackup(input:unknown):{ok:true;data:Backup}|{ok:false;error:string} {
   if(!input || typeof input!=='object' || Array.isArray(input)) return {ok:false,error:'Backup must be a JSON object.'};
   const raw=input as Record<string,unknown>;
-  if(raw.schemaVersion===1||raw.schemaVersion===2||raw.schemaVersion===3){
+  if([1,2,3,4].includes(Number(raw.schemaVersion))){
     const migrated=migrateLegacyValues(raw);
     if(!migrated) return {ok:false,error:`The version ${raw.schemaVersion} backup is invalid.`};
-    return {ok:true,data:{schemaVersion:4,exportedAt:typeof raw.exportedAt==='string'&&!Number.isNaN(Date.parse(raw.exportedAt))?new Date(raw.exportedAt).toISOString():new Date().toISOString(),...migrated}};
+    return {ok:true,data:{schemaVersion:5,exportedAt:typeof raw.exportedAt==='string'&&!Number.isNaN(Date.parse(raw.exportedAt))?new Date(raw.exportedAt).toISOString():new Date().toISOString(),sections:migrated}};
   }
-  if(raw.schemaVersion!==4) return {ok:false,error:'This backup version is not supported.'};
-  if(typeof raw.exportedAt!=='string' || Number.isNaN(Date.parse(raw.exportedAt))) return {ok:false,error:'The export date is invalid.'};
-  const clean={} as SavedValues;
-  for(const kind of Object.keys(LIMITS) as ValueKind[]){
-    const list=raw[kind];
-    if(!Array.isArray(list)||list.length>500) return {ok:false,error:`${LABELS[kind]} values must be an array of at most 500 items.`};
-    if(list.some(value=>typeof value!=='string')) return {ok:false,error:`Every ${LABELS[kind].toLowerCase()} value must be text.`};
+  if(raw.schemaVersion!==5) return {ok:false,error:'This backup version is not supported.'};
+  if(typeof raw.exportedAt!=='string'||Number.isNaN(Date.parse(raw.exportedAt))) return {ok:false,error:'The export date is invalid.'};
+  if(!raw.sections||typeof raw.sections!=='object'||Array.isArray(raw.sections)) return {ok:false,error:'Backup sections are invalid.'};
+  const rawSections=raw.sections as Record<string,unknown>;
+  const kinds=Object.keys(rawSections).filter(isSectionKind);
+  if(!kinds.length||kinds.length>100) return {ok:false,error:'A backup must contain between 1 and 100 sections.'};
+  const clean:SavedValues={};
+  for(const kind of kinds){
+    const list=rawSections[kind];
+    if(!Array.isArray(list)||list.length>500) return {ok:false,error:`Section ${sectionLabel(kind)} must contain at most 500 saved values.`};
+    if(list.some(value=>typeof value!=='string')) return {ok:false,error:`Every section ${sectionLabel(kind)} value must be text.`};
     const normalized=(list as string[]).map(normalizeValue);
-    if(normalized.some(value=>!value||value.length>LIMITS[kind])) return {ok:false,error:`A ${LABELS[kind].toLowerCase()} value is empty or too long.`};
+    if(normalized.some(value=>!value||value.length>200)) return {ok:false,error:`A section ${sectionLabel(kind)} value is empty or too long.`};
     clean[kind]=dedupe(normalized);
   }
-  return {ok:true,data:{schemaVersion:4,exportedAt:new Date(raw.exportedAt).toISOString(),...clean}};
+  return {ok:true,data:{schemaVersion:5,exportedAt:new Date(raw.exportedAt).toISOString(),sections:clean}};
 }
 export function mergeValues(current:SavedValues,incoming:SavedValues):SavedValues {
-  return Object.fromEntries((Object.keys(DEFAULT_VALUES) as ValueKind[]).map(kind=>[kind,dedupe([...current[kind],...incoming[kind]])])) as SavedValues;
+  const kinds=new Set([...Object.keys(current),...Object.keys(incoming)].filter(isSectionKind));
+  return Object.fromEntries([...kinds].map(kind=>[kind,dedupe([...(current[kind]||[]),...(incoming[kind]||[])])])) as SavedValues;
 }
