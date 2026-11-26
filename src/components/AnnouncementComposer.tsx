@@ -1,12 +1,13 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, CardHeader, Text, Title3 } from '@fluentui/react-components';
 import { AddRegular, ArrowResetRegular, DeleteRegular } from '@fluentui/react-icons';
-import { INITIAL_SECTION_COUNT, SavedValues, buildAnnouncement, buildHindiSpokenDetails, sectionKind } from '../data/announcementTemplates';
+import { INITIAL_SECTION_COUNT, SECTION_COUNT_KEY, SavedValues, buildAnnouncement, buildHindiSpokenDetails, readSectionCount, sectionKind } from '../data/announcementTemplates';
 import { SavedValueField } from './SavedValueField';
 import { AnnouncementPreview } from './AnnouncementPreview';
 interface Props {values:SavedValues; add:(kind:`section${number}`,value:string)=>void}
 export function AnnouncementComposer({values,add}:Props){
- const [sections,setSections]=useState(()=>Array(INITIAL_SECTION_COUNT).fill('') as string[]); const [copied,setCopied]=useState(false);
+ const [sections,setSections]=useState(()=>Array(readSectionCount()).fill('') as string[]); const [copied,setCopied]=useState(false);
+ useEffect(()=>localStorage.setItem(SECTION_COUNT_KEY,String(sections.length)),[sections.length]);
  const text=useMemo(()=>buildAnnouncement(sections),[sections]);
  const hindiSpokenText=useMemo(()=>buildHindiSpokenDetails(sections),[sections]);
  const setSection=(index:number,value:string)=>setSections(current=>current.map((item,itemIndex)=>itemIndex===index?value:item));

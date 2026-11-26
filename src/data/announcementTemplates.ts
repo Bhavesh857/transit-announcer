@@ -9,6 +9,11 @@ export const DEFAULT_VALUES: SavedValues = Object.fromEntries(SECTION_KINDS.map(
 export const sectionLabel = (kind:string):string => kind.replace(/^section/,'');
 const isSectionKind = (kind:string):kind is ValueKind => /^section[1-9]\d*$/.test(kind);
 export const STORAGE_KEY = 'transit-announcer.values.v5';
+export const SECTION_COUNT_KEY = 'transit-announcer.section-count.v1';
+export function readSectionCount(storage:Pick<Storage,'getItem'>=localStorage):number {
+  const count=Number(storage.getItem(SECTION_COUNT_KEY));
+  return Number.isInteger(count)&&count>=1&&count<=100?count:INITIAL_SECTION_COUNT;
+}
 export const LEGACY_STORAGE_KEYS = ['transit-announcer.values.v4','transit-announcer.values.v3','transit-announcer.values.v2','transit-announcer.values.v1'];
 
 export function normalizeValue(value: string): string { return value.trim().replace(/\s+/g, ' '); }

@@ -1,10 +1,11 @@
 ﻿import { describe, expect, it } from 'vitest';
-import { DEFAULT_VALUES, buildAnnouncement, buildHindiSpokenDetails, mergeValues, normalizeValue, validateBackup } from '../data/announcementTemplates';
+import { DEFAULT_VALUES, buildAnnouncement, buildHindiSpokenDetails, mergeValues, normalizeValue, readSectionCount, validateBackup } from '../data/announcementTemplates';
 describe('announcement logic',()=>{
  it('shows section numbers in the preview',()=>expect(buildAnnouncement(['First message','','Third message'])).toBe('1: First message. 3: Third message.'));
  it('handles empty sections',()=>expect(buildAnnouncement(Array(10).fill(''))).toBe(''));
  it('speaks values without section numbers',()=>expect(buildHindiSpokenDetails(['पहला संदेश','','तीसरा संदेश'])).toBe('पहला संदेश। तीसरा संदेश।'));
  it('normalizes whitespace',()=>expect(normalizeValue('  पहला\n संदेश  ')).toBe('पहला संदेश'));
+ it('restores a valid saved section count',()=>{expect(readSectionCount({getItem:()=> '14'})).toBe(14);expect(readSectionCount({getItem:()=> 'invalid'})).toBe(10)});
 });
 describe('backup validation',()=>{
  const sections={section1:[' First ','First'],section2:[],section3:[],section4:[],section5:[],section6:[],section7:[],section8:[],section9:[],section10:[],section11:['Extra']};
